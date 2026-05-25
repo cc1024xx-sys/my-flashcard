@@ -1,5 +1,6 @@
 import { STORAGE_KEY, DEFAULT_DOMAINS } from './config.js';
 import { uid, getDateKey } from './utils.js';
+import { queueCloudSync } from './cloudSync.js';
 
 function emptyState() {
   return {
@@ -50,7 +51,7 @@ function migrateFromLegacyReviews(parsed) {
   return { domainReviews, dailyLogs };
 }
 
-function normalizeState(parsed) {
+export function normalizeState(parsed) {
   const migrated =
     parsed.reviews?.length && !parsed.domainReviews?.length
       ? migrateFromLegacyReviews(parsed)
@@ -88,9 +89,18 @@ export function loadState() {
   }
 }
 
-export function saveState(state) {
+/** 导入备份后写入本地（并触发云同步） */
+export function replaceState(parsed) {
+  const state = normalizeState(parsed);
+  saveState(state);
+  return state;
+}
+
+export function saveState(state, options = {}) {
+  const { skipCloudSync = false } = options;
   const { reviews, ...rest } = state;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
+  if (!skipCloudSync) queueCloudSync(rest);
 }
 
 export function getDomain(state, id) {

@@ -142,6 +142,16 @@
         </div>
       </form>
       <ul id="domain-list" class="space-y-2"></ul>
+
+      <section class="bg-white rounded-xl shadow p-5 mt-4 space-y-3">
+        <h3 class="text-base font-semibold text-slate-800">数据备份</h3>
+        <p class="text-xs text-slate-500">导出为 JSON 文件保存；导入会覆盖当前全部数据，请先导出一份备份。</p>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" id="backup-export" class="btn-ghost text-sm">导出备份</button>
+          <button type="button" id="backup-import" class="btn-ghost text-sm">导入备份</button>
+          <input type="file" id="backup-import-file" accept=".json,application/json" class="hidden" />
+        </div>
+      </section>
     </section>
   </main>
 

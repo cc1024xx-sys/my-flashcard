@@ -1,5 +1,18 @@
 export const STORAGE_KEY = 'rigong_flashcards_v1';
 
+/** 备份文件格式版本 */
+export const BACKUP_VERSION = 1;
+
+/**
+ * Supabase 云同步配置（发布前请替换成你自己的项目配置）
+ * - SUPABASE_URL 示例：https://xxxx.supabase.co
+ * - SUPABASE_ANON_KEY 示例：eyJ...
+ * - SUPABASE_STATE_ID 用于标识当前应用的数据行
+ */
+export const SUPABASE_URL = '';
+export const SUPABASE_ANON_KEY = '';
+export const SUPABASE_STATE_ID = 'default';
+
 /** 7 色预设：清新自然、区分清晰 */
 export const DOMAIN_COLORS = [
   { hex: '#3B82F6', label: '晴空蓝' },

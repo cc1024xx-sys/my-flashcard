@@ -3,6 +3,9 @@ import { bindDomainReviewForm, bindEditDomainReviewForm, setOnDomainReviewsChang
 import { bindDailyLogForm, bindEditDailyLogForm, loadTodayDailyLogIntoForm } from './dailyLog.js';
 import { renderAllHistory, bindHistoryUI } from './history.js';
 import { bindExtractForm, bindEditFlashcardForm, renderFlashcards } from './flashcards.js';
+import { loadState, saveState } from './storage.js';
+import { hydrateStateFromCloud } from './cloudSync.js';
+import { bindBackupUI } from './backup.js';
 
 const VIEWS = ['daily', 'domain-review', 'history', 'flashcards', 'domains'];
 
@@ -22,7 +25,14 @@ function switchView(name) {
   if (name === 'domains') renderDomains();
 }
 
-function init() {
+async function init() {
+  const hydrated = await hydrateStateFromCloud();
+  if (hydrated) {
+    // 走一遍 normalize 逻辑并写回，确保兼容旧字段结构。
+    const normalized = loadState();
+    saveState(normalized, { skipCloudSync: true });
+  }
+
   document.querySelectorAll('#main-nav [data-view]').forEach((btn) => {
     btn.addEventListener('click', () => switchView(btn.dataset.view));
   });
@@ -41,8 +51,19 @@ function init() {
   bindEditFlashcardForm();
   setOnDomainReviewsChanged(() => renderFlashcards());
 
+  bindBackupUI(refreshAllViews);
+
   renderDomains();
   switchView('daily');
 }
 
-document.addEventListener('DOMContentLoaded', init);
+function refreshAllViews() {
+  loadTodayDailyLogIntoForm();
+  renderDomains();
+  renderAllHistory();
+  renderFlashcards();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  void init();
+});
