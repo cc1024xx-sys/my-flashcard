@@ -118,8 +118,6 @@
   color: #fcd34d;
 }
 
-#extract-dialog::backdrop,
-#edit-flashcard-dialog::backdrop,
 #edit-domain-dialog::backdrop,
 #edit-domain-review-dialog::backdrop,
 #edit-daily-dialog::backdrop {
@@ -258,12 +256,96 @@
   font-weight: 500;
 }
 
-.flashcard-item {
-  transition: box-shadow 0.15s ease;
+.review-type-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
 }
 
-.flashcard-item:hover {
-  box-shadow: 0 10px 24px rgba(15, 23, 42, 0.08);
+.review-type-chip {
+  font-size: 0.8125rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.review-type-chip:hover {
+  border-color: var(--chip-color, #a5b4fc);
+  background: color-mix(in srgb, var(--chip-color, #6366f1) 8%, #fff);
+}
+
+.review-type-chip.selected {
+  border-color: var(--chip-color, #6366f1);
+  background: color-mix(in srgb, var(--chip-color, #6366f1) 14%, #fff);
+  color: #334155;
+  font-weight: 500;
+}
+
+.review-type-badge {
+  display: inline-block;
+  font-size: 0.6875rem;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  border: 1px solid transparent;
+  font-weight: 500;
+}
+
+.history-type-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.history-type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  color: #475569;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.history-type-dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  flex-shrink: 0;
+}
+
+.history-type-chip:hover {
+  border-color: var(--chip-color, #c4b5fd);
+  background: #f8fafc;
+}
+
+.history-type-chip.selected {
+  border-color: var(--chip-color, #6366f1);
+  background: color-mix(in srgb, var(--chip-color, #6366f1) 12%, #fff);
+  color: #334155;
+  font-weight: 500;
+}
+
+.report-type-breakdown .report-type-stat::after {
+  content: '·';
+  margin-left: 0.75rem;
+  color: #cbd5e1;
+}
+
+.report-type-breakdown .report-type-stat:last-child::after {
+  content: none;
+  margin: 0;
+}
+
+.report-highlight-item {
+  transition: box-shadow 0.15s ease;
 }
 
 .flashcard-cover {

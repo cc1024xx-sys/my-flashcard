@@ -70,11 +70,22 @@ export function hasStructuredReviewFields(review) {
   );
 }
 
-/** 提炼预览等：优先已有 content，否则由三块拼出 */
+/** 标题 + 正文拼成存储/预览用正文 */
+export function buildReviewContent(title, body) {
+  const t = String(title ?? '').trim();
+  const b = String(body ?? '').trim();
+  if (t && b) return `${t}\n\n${b}`;
+  return t || b;
+}
+
+/** 提炼预览等：优先 content，否则 title+body，兼容旧 KPT */
 export function getReviewFullText(review) {
   if (!review) return '';
   const c = String(review.content ?? '').trim();
   if (c) return c;
+  const title = String(review.title ?? '').trim();
+  const body = String(review.body ?? '').trim();
+  if (title || body) return buildReviewContent(title, body);
   return buildStructuredReviewContent(review.keep, review.problem, review.nextStep);
 }
 

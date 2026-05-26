@@ -45,3 +45,18 @@ export const DEFAULT_MOOD_TAGS = MOOD_TAG_OPTIONS.map((o) => o.tag);
 export const MOOD_TAG_EMOJI = Object.fromEntries(
   MOOD_TAG_OPTIONS.map((o) => [o.tag, o.emoji])
 );
+
+/** 领域复盘类型 */
+export const REVIEW_TYPE_OPTIONS = [
+  { id: 'pitfall', label: '每日踩坑', color: '#F59E0B' },
+  { id: 'key_behavior', label: '关键行为', color: '#3B82F6' },
+  { id: 'cognition_fix', label: '认知修正', color: '#8B5CF6' },
+  { id: 'inspiration', label: '灵感宝箱', color: '#22C55E' },
+  { id: 'emotion_dump', label: '情绪垃圾桶', color: '#F472B6' },
+];
+
+export const DEFAULT_REVIEW_TYPE = 'pitfall';
+
+export const REVIEW_TYPE_MAP = Object.fromEntries(
+  REVIEW_TYPE_OPTIONS.map((o) => [o.id, o])
+);

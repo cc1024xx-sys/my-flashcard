@@ -60,7 +60,7 @@ function buildDomainOptions(sorted, selectedId) {
 }
 
 function syncDomainSelects(sorted) {
-  const ids = ['domain-review-domain', 'edit-domain-review-domain', 'edit-flashcard-domain'];
+  const ids = ['domain-review-domain', 'edit-domain-review-domain'];
 
   ids.forEach((id) => {
     const select = document.getElementById(id);
@@ -127,9 +127,8 @@ export function renderDomains() {
       const id = btn.dataset.deleteDomain;
       const next = loadState();
       const hasReviews = next.domainReviews.some((r) => r.domainId === id);
-      const hasFlashcards = next.flashcards.some((f) => f.domainId === id);
-      if (hasReviews || hasFlashcards) {
-        showToast('该领域下还有复盘或闪卡，无法删除');
+      if (hasReviews) {
+        showToast('该领域下还有复盘，无法删除');
         return;
       }
       next.domains = next.domains.filter((d) => d.id !== id);

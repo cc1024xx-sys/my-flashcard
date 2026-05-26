@@ -17,7 +17,7 @@
       <button type="button" data-view="daily" class="nav-btn nav-btn-active">今日复盘</button>
       <button type="button" data-view="domain-review" class="nav-btn">领域复盘</button>
       <button type="button" data-view="history" class="nav-btn">历史记录</button>
-      <button type="button" data-view="flashcards" class="nav-btn">闪卡库</button>
+      <button type="button" data-view="report" class="nav-btn">自我报告</button>
       <button type="button" data-view="domains" class="nav-btn">领域设置</button>
     </nav>
   </header>
@@ -44,7 +44,7 @@
       </form>
     </section>
 
-    <!-- 领域复盘：KPT -->
+    <!-- 领域复盘 -->
     <section id="view-domain-review" class="view-panel hidden">
       <form id="domain-review-form" class="bg-white rounded-xl shadow p-5 space-y-4">
         <div>
@@ -55,43 +55,31 @@
           <select id="domain-review-domain" class="input" required></select>
         </div>
         <div>
-          <label class="label">整体评分（1-5 星）</label>
-          <div id="domain-review-rating-stars" class="flex gap-1 text-2xl cursor-pointer" aria-label="领域评分"></div>
-          <input type="hidden" id="domain-review-rating" value="0" />
-        </div>
-        <div class="space-y-1">
-          <span class="label">领域复盘（KPT）</span>
+          <span class="label">复盘类型</span>
+          <p class="text-xs text-slate-500 mb-2">选择一条记录的性质，便于日后筛选回顾</p>
+          <div id="domain-review-types" class="review-type-chips" role="group" aria-label="复盘类型"></div>
+          <input type="hidden" id="domain-review-types-value" value="pitfall" />
         </div>
         <div>
-          <label class="label" for="domain-review-keep">继续保持（Keep）</label>
-          <p class="text-xs text-slate-500 mb-1">在该领域做得好的、值得坚持的做法</p>
-          <textarea
-            id="domain-review-keep"
-            class="input min-h-[72px]"
-            maxlength="2000"
-            placeholder="例如：提前列清单再开会，减少了返工"
-          ></textarea>
+          <label class="label" for="domain-review-title">标题</label>
+          <input
+            id="domain-review-title"
+            class="input"
+            maxlength="200"
+            placeholder="一句话概括，如：下午开会又跑偏了"
+          />
         </div>
         <div>
-          <label class="label" for="domain-review-problem">问题 / 卡点（Problem）</label>
-          <p class="text-xs text-slate-500 mb-1">不顺手的地方、情绪或外部阻碍</p>
+          <label class="label" for="domain-review-body">正文</label>
+          <p class="text-xs text-slate-500 mb-1">发生了什么、你的感受或下一步想法</p>
           <textarea
-            id="domain-review-problem"
-            class="input min-h-[72px]"
-            maxlength="2000"
-            placeholder="例如：下午精力低时容易分心"
+            id="domain-review-body"
+            class="input min-h-[120px]"
+            maxlength="4000"
+            placeholder="写下细节，方便日后回顾与报告"
           ></textarea>
         </div>
-        <div>
-          <label class="label" for="domain-review-next">下一步（Next step）</label>
-          <p class="text-xs text-slate-500 mb-1">明天或本周在该领域可执行的一小步</p>
-          <textarea
-            id="domain-review-next"
-            class="input min-h-[72px]"
-            maxlength="2000"
-            placeholder="例如：明天 10 点前先完成 A 任务再回消息"
-          ></textarea>
-        </div>
+        <p class="text-xs text-slate-500">标题与正文至少填写一项。</p>
         <button type="submit" class="btn-primary w-full">保存复盘</button>
       </form>
     </section>
@@ -100,9 +88,16 @@
     <section id="view-history" class="view-panel hidden">
       <h2 class="text-lg font-semibold mb-4">历史记录</h2>
 
-      <div class="history-tabs flex gap-2 mb-4" role="tablist">
+      <div class="history-tabs flex flex-wrap gap-2 mb-4" role="tablist">
+        <button type="button" data-history-tab="type" class="history-tab">按复盘类型</button>
         <button type="button" data-history-tab="day" class="history-tab history-tab-active">按日回顾</button>
         <button type="button" data-history-tab="domain" class="history-tab">按领域回顾</button>
+      </div>
+
+      <div id="history-panel-type" class="hidden">
+        <div id="history-type-filters" class="history-type-filters mb-3" role="group" aria-label="复盘类型"></div>
+        <h3 id="history-by-type-title" class="text-base font-medium text-slate-700 mb-3">全部类型</h3>
+        <div id="history-by-type-list" class="space-y-3"></div>
       </div>
 
       <div id="history-panel-day">
@@ -122,10 +117,24 @@
       </div>
     </section>
 
-    <!-- 闪卡库 -->
-    <section id="view-flashcards" class="view-panel hidden">
-      <input id="flashcard-filter" class="input mb-4" placeholder="按标签或金句筛选，如：习惯" />
-      <div id="flashcard-grid" class="grid gap-3 sm:grid-cols-2"></div>
+    <!-- 自我报告 -->
+    <section id="view-report" class="view-panel hidden">
+      <h2 class="text-lg font-semibold mb-4">自我报告</h2>
+      <div class="history-tabs flex flex-wrap gap-2 mb-4" role="tablist">
+        <button type="button" data-report-period="week" class="history-tab history-tab-active">周度</button>
+        <button type="button" data-report-period="month" class="history-tab">月度</button>
+        <button type="button" data-report-period="year" class="history-tab">年度</button>
+      </div>
+      <div class="flex items-center justify-between gap-2 mb-4 flex-wrap">
+        <div class="flex items-center gap-2">
+          <button type="button" id="report-prev" class="btn-ghost text-sm" aria-label="上一周期">◀</button>
+          <span id="report-period-label" class="text-sm font-medium text-slate-700 min-w-[8rem] text-center"></span>
+          <button type="button" id="report-next" class="btn-ghost text-sm" aria-label="下一周期">▶</button>
+        </div>
+        <button type="button" id="report-today" class="btn-ghost text-sm">回到本周期</button>
+      </div>
+      <p class="text-xs text-slate-500 mb-4">周度为周一至周日；报告根据本周期内的今日复盘与领域复盘自动生成。</p>
+      <div id="report-output" class="space-y-4"></div>
     </section>
 
     <!-- 领域设置 -->
@@ -206,84 +215,24 @@
         <label class="label" for="edit-domain-review-domain">领域</label>
         <select id="edit-domain-review-domain" class="input" required></select>
       </div>
-      <p class="text-xs text-slate-500">至少填写一项 KPT 内容。</p>
       <div>
-        <label class="label">整体评分（1-5 星）</label>
-        <div id="edit-domain-review-rating-stars" class="flex gap-1 text-2xl cursor-pointer" aria-label="评分"></div>
-        <input type="hidden" id="edit-domain-review-rating" value="0" />
+        <span class="label">复盘类型</span>
+        <div id="edit-domain-review-types" class="review-type-chips mt-1" role="group"></div>
+        <input type="hidden" id="edit-domain-review-types-value" value="pitfall" />
       </div>
       <div>
-        <label class="label" for="edit-domain-review-keep">继续保持（Keep）</label>
-        <textarea id="edit-domain-review-keep" class="input min-h-[64px]" maxlength="2000"></textarea>
+        <label class="label" for="edit-domain-review-title">标题</label>
+        <input id="edit-domain-review-title" class="input" maxlength="200" />
       </div>
       <div>
-        <label class="label" for="edit-domain-review-problem">问题 / 卡点（Problem）</label>
-        <textarea id="edit-domain-review-problem" class="input min-h-[64px]" maxlength="2000"></textarea>
+        <label class="label" for="edit-domain-review-body">正文</label>
+        <textarea id="edit-domain-review-body" class="input min-h-[100px]" maxlength="4000"></textarea>
       </div>
-      <div>
-        <label class="label" for="edit-domain-review-next">下一步（Next）</label>
-        <textarea id="edit-domain-review-next" class="input min-h-[64px]" maxlength="2000"></textarea>
-      </div>
+      <p class="text-xs text-slate-500">标题与正文至少填写一项。</p>
       <input type="hidden" id="edit-domain-review-id" />
       <div class="flex gap-2 justify-end">
         <button type="button" id="edit-domain-review-cancel" class="btn-ghost">取消</button>
         <button type="submit" class="btn-primary">保存修改</button>
-      </div>
-    </form>
-  </dialog>
-
-  <!-- 编辑闪卡弹层 -->
-  <dialog id="edit-flashcard-dialog" class="rounded-xl p-0 w-[min(100%,28rem)] max-h-[90vh] overflow-y-auto border-0 shadow-xl backdrop:bg-black/30">
-    <form id="edit-flashcard-form" class="p-5 space-y-4">
-      <h3 class="font-semibold text-lg">编辑闪卡</h3>
-      <div>
-        <label class="label" for="edit-flashcard-domain">领域</label>
-        <select id="edit-flashcard-domain" class="input" required></select>
-      </div>
-      <div>
-        <label class="label" for="edit-flashcard-concept">概念</label>
-        <textarea id="edit-flashcard-concept" class="input min-h-[64px]" maxlength="1000" required placeholder="例如：先对齐目标再执行"></textarea>
-      </div>
-      <div>
-        <label class="label" for="edit-flashcard-cognition">具体认知</label>
-        <textarea id="edit-flashcard-cognition" class="input min-h-[88px]" maxlength="2000" required placeholder="例如：今天评审前列了三条目标，返工明显减少"></textarea>
-      </div>
-      <div>
-        <label class="label" for="edit-flashcard-tags">标签（逗号分隔）</label>
-        <input id="edit-flashcard-tags" class="input" placeholder="习惯, 效率" />
-      </div>
-      <input type="hidden" id="edit-flashcard-id" />
-      <div class="flex gap-2 justify-end">
-        <button type="button" id="edit-flashcard-cancel" class="btn-ghost">取消</button>
-        <button type="submit" class="btn-primary">保存修改</button>
-      </div>
-    </form>
-  </dialog>
-
-  <!-- 提炼闪卡弹层 -->
-  <dialog id="extract-dialog" class="rounded-xl p-0 w-[min(100%,28rem)] max-h-[90vh] overflow-y-auto border-0 shadow-xl backdrop:bg-black/30">
-    <form id="extract-form" class="p-5 space-y-4">
-      <h3 class="font-semibold text-lg">提炼为记忆闪卡</h3>
-      <p class="text-xs text-slate-500">关联领域复盘摘要（仅供对照）</p>
-      <p id="extract-review-preview" class="text-sm text-slate-500 bg-slate-50 p-3 rounded-lg"></p>
-      <div>
-        <label class="label" for="extract-concept">核心概念</label>
-        <p class="text-xs text-slate-500 mb-1">可以是名词或短句，提炼成一个可记忆的概念</p>
-        <textarea id="extract-concept" class="input min-h-[64px]" maxlength="1000" required placeholder="例如：先对齐目标再执行"></textarea>
-      </div>
-      <div>
-        <label class="label" for="extract-cognition">具体认知</label>
-        <p class="text-xs text-slate-500 mb-1">结合领域复盘写清「是什么 / 为什么 / 怎么做」</p>
-        <textarea id="extract-cognition" class="input min-h-[88px]" maxlength="2000" required placeholder="例如：今天评审前列了三条目标，返工明显减少"></textarea>
-      </div>
-      <div>
-        <label class="label" for="extract-tags">标签（逗号分隔）</label>
-        <input id="extract-tags" class="input" placeholder="习惯, 效率" />
-      </div>
-      <input type="hidden" id="extract-review-id" />
-      <div class="flex gap-2 justify-end">
-        <button type="button" id="extract-cancel" class="btn-ghost">取消</button>
-        <button type="submit" class="btn-primary">保存闪卡</button>
       </div>
     </form>
   </dialog>

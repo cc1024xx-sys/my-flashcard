@@ -1,16 +1,23 @@
 import { loadState, saveState, getDomain } from './storage.js';
+import { REVIEW_TYPE_OPTIONS, REVIEW_TYPE_MAP } from './config.js';
 import { formatDate, formatDateKey, escapeHtml, getDateKey } from './utils.js';
-import { openExtractDialog } from './flashcards.js';
 import { openEditDailyLogDialog, deleteDailyLog, renderMoodTagsHtml } from './dailyLog.js';
 import {
   openEditDomainReviewDialog,
   deleteDomainReview,
+  toggleReviewHighlight,
   renderReviewBodyHtml,
-  renderRatingStarsHtml,
+  renderReviewTypeBadgeHtml,
 } from './reviews.js';
 
 let historyTab = 'day';
 let historyDomainFilter = 'all';
+let historyTypeFilter = 'all';
+
+function filterReviewsByType(reviews) {
+  if (historyTypeFilter === 'all') return reviews;
+  return reviews.filter((r) => (r.reviewType || 'pitfall') === historyTypeFilter);
+}
 
 function collectDateKeys(state) {
   const keys = new Set();
@@ -25,7 +32,28 @@ function getReviewsForDate(state, dateKey) {
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 }
 
-function renderDomainReviewItemHtml(state, r, { showDate = false } = {}) {
+function renderHistoryTypeFilterChips() {
+  const container = document.getElementById('history-type-filters');
+  if (!container) return;
+
+  const allActive = historyTypeFilter === 'all' ? ' selected' : '';
+  container.innerHTML = `
+    <button type="button" class="history-type-chip${allActive}" data-type-filter="all">全部</button>
+    ${REVIEW_TYPE_OPTIONS.map(({ id, label, color }) => {
+      const active = historyTypeFilter === id ? ' selected' : '';
+      return `<button type="button" class="history-type-chip${active}" data-type-filter="${id}" style="--chip-color:${color}">
+        <span class="history-type-dot" style="background:${color}"></span>${escapeHtml(label)}
+      </button>`;
+    }).join('')}`;
+}
+
+function highlightActionHtml(r, sizeClass = 'text-xs') {
+  const label = r.highlighted ? '取消标亮' : '标为有价值';
+  const extra = r.highlighted ? ' text-amber-700' : '';
+  return `<button type="button" data-toggle-highlight="${r.id}" class="btn-ghost ${sizeClass}${extra}">${label}</button>`;
+}
+
+function renderDomainReviewItemHtml(state, r, { showDate = false, showTypeBadge = true } = {}) {
   const domain = getDomain(state, r.domainId);
   const dateLine = showDate
     ? `<span class="text-slate-400 text-xs">${escapeHtml(formatDateKey(getDateKey(r.createdAt)))}</span>`
@@ -36,13 +64,14 @@ function renderDomainReviewItemHtml(state, r, { showDate = false } = {}) {
       <div class="flex items-center gap-2 text-sm mb-2 flex-wrap">
         <span class="w-2 h-2 rounded-full shrink-0" style="background:${domain?.color || '#94a3b8'}"></span>
         <span class="font-medium text-slate-800">${escapeHtml(domain?.name || '未知领域')}</span>
-        ${renderRatingStarsHtml(r.rating)}
+        ${showTypeBadge ? renderReviewTypeBadgeHtml(r.reviewType) : ''}
+        ${r.highlighted ? '<span class="text-amber-500 text-xs" title="已标为有价值">★</span>' : ''}
         ${dateLine}
         ${!showDate ? `<span class="text-slate-400 text-xs ml-auto">${formatDate(r.createdAt)}</span>` : ''}
       </div>
       <div class="text-sm">${renderReviewBodyHtml(r)}</div>
       <div class="flex flex-wrap gap-2 mt-3">
-        <button type="button" data-extract="${r.id}" class="btn-ghost text-xs">提炼归纳</button>
+        ${highlightActionHtml(r)}
         <button type="button" data-edit-domain-review="${r.id}" class="btn-ghost text-xs">编辑</button>
         <button type="button" data-delete-domain-review="${r.id}" class="btn-ghost btn-danger text-xs">删除</button>
       </div>
@@ -50,11 +79,8 @@ function renderDomainReviewItemHtml(state, r, { showDate = false } = {}) {
 }
 
 function bindDomainReviewActions(container, state) {
-  container.querySelectorAll('[data-extract]').forEach((btn) => {
-    btn.addEventListener('click', () => {
-      const review = state.domainReviews.find((r) => r.id === btn.dataset.extract);
-      if (review) openExtractDialog(review);
-    });
+  container.querySelectorAll('[data-toggle-highlight]').forEach((btn) => {
+    btn.addEventListener('click', () => toggleReviewHighlight(btn.dataset.toggleHighlight));
   });
   container.querySelectorAll('[data-edit-domain-review]').forEach((btn) => {
     btn.addEventListener('click', () => {
@@ -65,6 +91,39 @@ function bindDomainReviewActions(container, state) {
   container.querySelectorAll('[data-delete-domain-review]').forEach((btn) => {
     btn.addEventListener('click', () => deleteDomainReview(btn.dataset.deleteDomainReview));
   });
+}
+
+export function renderHistoryByType() {
+  const container = document.getElementById('history-by-type-list');
+  if (!container) return;
+
+  renderHistoryTypeFilterChips();
+
+  const state = loadState();
+  const reviews = filterReviewsByType([...state.domainReviews]).sort(
+    (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+  );
+
+  const titleEl = document.getElementById('history-by-type-title');
+  if (titleEl) {
+    const label =
+      historyTypeFilter === 'all'
+        ? '全部类型'
+        : REVIEW_TYPE_MAP[historyTypeFilter]?.label || '复盘类型';
+    titleEl.textContent = `${label} · 共 ${reviews.length} 条`;
+  }
+
+  if (!reviews.length) {
+    container.innerHTML =
+      '<p class="text-slate-500 text-center py-8 text-sm">该类型下暂无领域复盘</p>';
+    return;
+  }
+
+  container.innerHTML = reviews
+    .map((r) => renderDomainReviewItemHtml(state, r, { showDate: true, showTypeBadge: historyTypeFilter === 'all' }))
+    .join('');
+
+  bindDomainReviewActions(container, state);
 }
 
 export function renderHistoryByDay() {
@@ -206,12 +265,12 @@ export function renderHistoryByDomain() {
         <article class="bg-white rounded-xl shadow p-4 flex flex-col gap-3">
           <div class="flex items-center gap-2 text-sm flex-wrap">
             ${showDomainName ? `<span class="w-2 h-2 rounded-full shrink-0" style="background:${domainItem?.color || '#94a3b8'}"></span><span class="font-medium">${escapeHtml(domainItem?.name || '')}</span>` : ''}
+            ${renderReviewTypeBadgeHtml(r.reviewType)}
             <span class="text-slate-600 text-xs">${escapeHtml(formatDateKey(getDateKey(r.createdAt)))}</span>
-            ${renderRatingStarsHtml(r.rating)}
           </div>
           ${renderReviewBodyHtml(r)}
           <div class="flex flex-wrap gap-2">
-            <button type="button" data-extract="${r.id}" class="btn-ghost text-xs">提炼归纳</button>
+            ${highlightActionHtml(r)}
             <button type="button" data-edit-domain-review="${r.id}" class="btn-ghost text-xs">编辑</button>
             <button type="button" data-delete-domain-review="${r.id}" class="btn-ghost btn-danger text-xs">删除</button>
           </div>
@@ -222,14 +281,15 @@ export function renderHistoryByDomain() {
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 text-sm mb-2 flex-wrap">
               ${showDomainName ? `<span class="w-2 h-2 rounded-full shrink-0" style="background:${domainItem?.color || '#94a3b8'}"></span><span class="font-medium">${escapeHtml(domainItem?.name || '')}</span>` : ''}
+              ${renderReviewTypeBadgeHtml(r.reviewType)}
+              ${r.highlighted ? '<span class="text-amber-500 text-xs">★</span>' : ''}
               <span class="text-slate-600">${escapeHtml(formatDateKey(getDateKey(r.createdAt)))}</span>
-              ${renderRatingStarsHtml(r.rating)}
               <span class="text-slate-400 text-xs ml-auto">${formatDate(r.createdAt)}</span>
             </div>
             ${renderReviewBodyHtml(r)}
           </div>
           <div class="flex flex-wrap gap-2 shrink-0 self-start">
-            <button type="button" data-extract="${r.id}" class="btn-ghost text-sm">提炼归纳</button>
+            ${highlightActionHtml(r, 'text-sm')}
             <button type="button" data-edit-domain-review="${r.id}" class="btn-ghost text-sm">编辑</button>
             <button type="button" data-delete-domain-review="${r.id}" class="btn-ghost btn-danger text-sm">删除</button>
           </div>
@@ -241,6 +301,7 @@ export function renderHistoryByDomain() {
 }
 
 function updateHistoryTabUI() {
+  document.getElementById('history-panel-type')?.classList.toggle('hidden', historyTab !== 'type');
   document.getElementById('history-panel-day')?.classList.toggle('hidden', historyTab !== 'day');
   document.getElementById('history-panel-domain')?.classList.toggle('hidden', historyTab !== 'domain');
   document.querySelectorAll('[data-history-tab]').forEach((btn) => {
@@ -250,7 +311,8 @@ function updateHistoryTabUI() {
 
 export function renderAllHistory() {
   updateHistoryTabUI();
-  if (historyTab === 'day') renderHistoryByDay();
+  if (historyTab === 'type') renderHistoryByType();
+  else if (historyTab === 'day') renderHistoryByDay();
   else renderHistoryByDomain();
 }
 
@@ -265,10 +327,23 @@ export function bindHistoryUI() {
     });
   });
 
+  document.getElementById('history-type-filters')?.addEventListener('click', (e) => {
+    const chip = e.target.closest('[data-type-filter]');
+    if (!chip) return;
+    historyTypeFilter = chip.dataset.typeFilter;
+    const state = loadState();
+    state.settings.historyTypeFilter = historyTypeFilter;
+    saveState(state);
+    renderHistoryByType();
+  });
+
   document.getElementById('history-domain-filters')?.addEventListener('click', (e) => {
     const chip = e.target.closest('[data-domain-filter]');
     if (!chip) return;
     historyDomainFilter = chip.dataset.domainFilter;
+    const state = loadState();
+    state.settings.historyDomainFilter = historyDomainFilter;
+    saveState(state);
     renderHistoryByDomain();
   });
 
@@ -287,6 +362,9 @@ export function bindHistoryUI() {
   });
 
   const state = loadState();
-  historyTab = state.settings.historyTab || 'day';
-  historyDomainFilter = 'all';
+  historyTab = ['type', 'day', 'domain'].includes(state.settings.historyTab)
+    ? state.settings.historyTab
+    : 'day';
+  historyTypeFilter = state.settings.historyTypeFilter || 'all';
+  historyDomainFilter = state.settings.historyDomainFilter || 'all';
 }

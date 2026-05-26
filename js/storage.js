@@ -1,5 +1,5 @@
-import { STORAGE_KEY, DEFAULT_DOMAINS } from './config.js';
-import { uid, getDateKey } from './utils.js';
+import { STORAGE_KEY, DEFAULT_DOMAINS, DEFAULT_REVIEW_TYPE } from './config.js';
+import { uid, getDateKey, getReviewFullText, buildReviewContent } from './utils.js';
 
 function emptyState() {
   return {
@@ -11,8 +11,12 @@ function emptyState() {
     })),
     dailyLogs: [],
     domainReviews: [],
-    flashcards: [],
-    settings: { historyView: 'list', historyTab: 'day' },
+    settings: {
+      historyView: 'list',
+      historyTab: 'day',
+      reportPeriod: 'week',
+      reportAnchorDate: getDateKey(),
+    },
   };
 }
 
@@ -50,6 +54,56 @@ function migrateFromLegacyReviews(parsed) {
   return { domainReviews, dailyLogs };
 }
 
+function applyHighlightFields(r, base) {
+  if (r.highlighted) {
+    base.highlighted = true;
+    base.highlightedAt = r.highlightedAt || r.createdAt;
+  }
+  return base;
+}
+
+function normalizeDomainReview(r) {
+  if (!r || typeof r !== 'object') return r;
+  if (r.reviewType && (String(r.title ?? '').trim() || String(r.body ?? '').trim() || r.content)) {
+    const title = String(r.title ?? '').trim();
+    const body = String(r.body ?? '').trim();
+    return applyHighlightFields(r, {
+      id: r.id,
+      domainId: r.domainId,
+      reviewType: r.reviewType,
+      title,
+      body,
+      content: String(r.content ?? '').trim() || buildReviewContent(title, body),
+      createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
+    });
+  }
+  const body = getReviewFullText(r);
+  return applyHighlightFields(r, {
+    id: r.id,
+    domainId: r.domainId,
+    reviewType: r.reviewType || 'key_behavior',
+    title: String(r.title ?? '').trim(),
+    body: body || String(r.body ?? '').trim(),
+    content: body || buildReviewContent(r.title, r.body),
+    createdAt: r.createdAt,
+    updatedAt: r.updatedAt,
+  });
+}
+
+function migrateFlashcardHighlights(reviews, flashcards) {
+  if (!flashcards?.length) return reviews;
+  const ids = new Set(flashcards.map((f) => f.reviewId).filter(Boolean));
+  return reviews.map((r) => {
+    if (!ids.has(r.id) || r.highlighted) return r;
+    return {
+      ...r,
+      highlighted: true,
+      highlightedAt: r.highlightedAt || new Date().toISOString(),
+    };
+  });
+}
+
 export function normalizeState(parsed) {
   const clean = { ...parsed };
   delete clean._meta;
@@ -62,12 +116,22 @@ export function normalizeState(parsed) {
           dailyLogs: clean.dailyLogs ?? [],
         };
 
+  let domainReviews = (migrated.domainReviews ?? []).map(normalizeDomainReview);
+  domainReviews = migrateFlashcardHighlights(domainReviews, clean.flashcards);
+
   return {
     domains: clean.domains ?? [],
     dailyLogs: migrated.dailyLogs,
-    domainReviews: migrated.domainReviews,
-    flashcards: clean.flashcards ?? [],
-    settings: { historyView: 'list', historyTab: 'day', ...clean.settings },
+    domainReviews,
+    settings: {
+      historyView: 'list',
+      historyTab: 'day',
+      historyTypeFilter: 'all',
+      historyDomainFilter: 'all',
+      reportPeriod: 'week',
+      reportAnchorDate: getDateKey(),
+      ...clean.settings,
+    },
   };
 }
 

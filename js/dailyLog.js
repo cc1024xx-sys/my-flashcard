@@ -13,6 +13,11 @@ let dailyRating = 0;
 let dailyStarsContainer = null;
 let editDailyRating = 0;
 let editDailyStarsContainer = null;
+let onDailyLogChanged = null;
+
+export function setOnDailyLogChanged(callback) {
+  onDailyLogChanged = callback;
+}
 
 function renderMoodTagPicker(containerId, selectedTags = []) {
   const container = document.getElementById(containerId);
@@ -133,6 +138,7 @@ export function bindDailyLogForm() {
 
 function refreshHistory() {
   import('./history.js').then((m) => m.renderAllHistory());
+  onDailyLogChanged?.();
 }
 
 export function openEditDailyLogDialog(log) {

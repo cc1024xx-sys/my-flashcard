@@ -1,11 +1,16 @@
 import { renderDomains, bindDomainForm, bindEditDomainForm } from './domains.js';
 import { bindDomainReviewForm, bindEditDomainReviewForm, setOnDomainReviewsChanged } from './reviews.js';
-import { bindDailyLogForm, bindEditDailyLogForm, loadTodayDailyLogIntoForm } from './dailyLog.js';
+import {
+  bindDailyLogForm,
+  bindEditDailyLogForm,
+  loadTodayDailyLogIntoForm,
+  setOnDailyLogChanged,
+} from './dailyLog.js';
 import { renderAllHistory, bindHistoryUI } from './history.js';
-import { bindExtractForm, bindEditFlashcardForm, renderFlashcards } from './flashcards.js';
+import { bindReportUI, renderReport } from './reports.js';
 import { bindBackupUI } from './backup.js';
 
-const VIEWS = ['daily', 'domain-review', 'history', 'flashcards', 'domains'];
+const VIEWS = ['daily', 'domain-review', 'history', 'report', 'domains'];
 
 function switchView(name) {
   VIEWS.forEach((v) => {
@@ -19,7 +24,7 @@ function switchView(name) {
 
   if (name === 'daily') loadTodayDailyLogIntoForm();
   if (name === 'history') renderAllHistory();
-  if (name === 'flashcards') renderFlashcards();
+  if (name === 'report') renderReport();
   if (name === 'domains') renderDomains();
 }
 
@@ -27,7 +32,7 @@ function refreshAllViews() {
   loadTodayDailyLogIntoForm();
   renderDomains();
   renderAllHistory();
-  renderFlashcards();
+  renderReport();
 }
 
 function init() {
@@ -38,16 +43,16 @@ function init() {
   bindDomainForm();
   bindEditDomainForm(() => {
     renderAllHistory();
-    renderFlashcards();
+    renderReport();
   });
   bindDailyLogForm();
   bindEditDailyLogForm();
+  setOnDailyLogChanged(() => renderReport());
   bindDomainReviewForm();
   bindEditDomainReviewForm();
   bindHistoryUI();
-  bindExtractForm();
-  bindEditFlashcardForm();
-  setOnDomainReviewsChanged(() => renderFlashcards());
+  bindReportUI();
+  setOnDomainReviewsChanged(() => renderReport());
   bindBackupUI(refreshAllViews);
 
   renderDomains();
