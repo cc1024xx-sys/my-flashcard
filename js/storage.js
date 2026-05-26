@@ -1,7 +1,5 @@
 import { STORAGE_KEY, DEFAULT_DOMAINS } from './config.js';
 import { uid, getDateKey } from './utils.js';
-import { queueCloudSync } from './cloudSync.js';
-import { getActiveStorageKey } from './session.js';
 
 function emptyState() {
   return {
@@ -75,7 +73,7 @@ export function normalizeState(parsed) {
 
 export function loadState() {
   try {
-    const raw = localStorage.getItem(getActiveStorageKey());
+    const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) {
       const initial = emptyState();
       saveState(initial);
@@ -93,18 +91,16 @@ export function loadState() {
   }
 }
 
-/** 导入备份后写入本地（并触发云同步） */
+/** 导入备份后写入本地 */
 export function replaceState(parsed) {
   const state = normalizeState(parsed);
   saveState(state);
   return state;
 }
 
-export function saveState(state, options = {}) {
-  const { skipCloudSync = false } = options;
+export function saveState(state) {
   const { reviews, _meta, ...rest } = state;
-  localStorage.setItem(getActiveStorageKey(), JSON.stringify(rest));
-  if (!skipCloudSync) queueCloudSync(rest);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
 }
 
 export function getDomain(state, id) {

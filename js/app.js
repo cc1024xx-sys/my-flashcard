@@ -4,19 +4,8 @@ import { bindDailyLogForm, bindEditDailyLogForm, loadTodayDailyLogIntoForm } fro
 import { renderAllHistory, bindHistoryUI } from './history.js';
 import { bindExtractForm, bindEditFlashcardForm, renderFlashcards } from './flashcards.js';
 import { bindBackupUI } from './backup.js';
-import {
-  initAuth,
-  bindAuthUI,
-  showAuthGateIfNeeded,
-  hideAuthGate,
-  setOnLoginSuccess,
-  isSupabaseConfigured,
-} from './auth.js';
-import { getActiveUserId } from './session.js';
 
 const VIEWS = ['daily', 'domain-review', 'history', 'flashcards', 'domains'];
-
-let appBooted = false;
 
 function switchView(name) {
   VIEWS.forEach((v) => {
@@ -41,13 +30,7 @@ function refreshAllViews() {
   renderFlashcards();
 }
 
-function bootApp() {
-  if (appBooted) {
-    refreshAllViews();
-    return;
-  }
-  appBooted = true;
-
+function init() {
   document.querySelectorAll('#main-nav [data-view]').forEach((btn) => {
     btn.addEventListener('click', () => switchView(btn.dataset.view));
   });
@@ -71,22 +54,4 @@ function bootApp() {
   switchView('daily');
 }
 
-async function init() {
-  bindAuthUI();
-  setOnLoginSuccess(() => bootApp());
-
-  await initAuth();
-
-  if (isSupabaseConfigured()) {
-    if (showAuthGateIfNeeded()) return;
-    hideAuthGate();
-  }
-
-  if (isSupabaseConfigured() && !getActiveUserId()) return;
-
-  bootApp();
-}
-
-document.addEventListener('DOMContentLoaded', () => {
-  void init();
-});
+document.addEventListener('DOMContentLoaded', init);

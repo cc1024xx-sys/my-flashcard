@@ -278,11 +278,3 @@
   outline-offset: 4px;
   border-radius: 0.5rem;
 }
-
-#auth-gate.hidden {
-  display: none;
-}
-
-#app-shell.hidden {
-  display: none;
-}
