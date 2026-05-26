@@ -1,5 +1,5 @@
 import { STORAGE_KEY, BACKUP_VERSION } from './config.js';
-import { loadState, replaceState } from './storage.js';
+import { loadState, mergeState } from './storage.js';
 import { showToast } from './utils.js';
 
 function buildExportPayload() {
@@ -47,6 +47,14 @@ function validateImportShape(data) {
   return true;
 }
 
+function formatMergeStats(stats) {
+  const parts = [];
+  if (stats.domains) parts.push(`领域 ${stats.domains}`);
+  if (stats.dailyLogs) parts.push(`今日复盘 ${stats.dailyLogs}`);
+  if (stats.domainReviews) parts.push(`领域复盘 ${stats.domainReviews}`);
+  return parts.length ? parts.join('、') : '无新增（重复项已跳过）';
+}
+
 export function bindBackupUI(onImported) {
   document.getElementById('backup-export')?.addEventListener('click', exportBackup);
 
@@ -71,12 +79,18 @@ export function bindBackupUI(onImported) {
       const reviews = (raw.domainReviews ?? []).length;
       const daily = (raw.dailyLogs ?? []).length;
       const legacyCards = (raw.flashcards ?? []).length;
-      const legacyNote = legacyCards ? `（含 ${legacyCards} 条旧版闪卡，导入后将合并为「有价值」标记）\n\n` : '\n';
-      const msg = `将覆盖当前全部数据。\n\n备份内容：领域 ${domains}、今日复盘 ${daily}、领域复盘 ${reviews}${legacyNote}确定导入吗？`;
+      const legacyNote = legacyCards
+        ? `（含 ${legacyCards} 条旧版闪卡，匹配复盘将标为「有价值」）\n\n`
+        : '\n';
+      const msg =
+        `将合并到当前数据，不会删除已有记录。\n` +
+        `同 id 的领域复盘会跳过；同一天的今日复盘保留较新的一条。\n\n` +
+        `备份内容：领域 ${domains}、今日复盘 ${daily}、领域复盘 ${reviews}${legacyNote}` +
+        `确定合并导入吗？`;
       if (!confirm(msg)) return;
 
-      replaceState(raw);
-      showToast('备份已导入');
+      const { stats } = mergeState(raw);
+      showToast(`已合并导入：${formatMergeStats(stats)}`);
       onImported?.();
     } catch {
       showToast('无法读取备份文件，请确认是有效的 JSON');

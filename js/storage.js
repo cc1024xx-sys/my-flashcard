@@ -155,11 +155,71 @@ export function loadState() {
   }
 }
 
-/** 导入备份后写入本地 */
+/** 整库覆盖（保留供特殊场景使用） */
 export function replaceState(parsed) {
   const state = normalizeState(parsed);
   saveState(state);
   return state;
+}
+
+/**
+ * 合并导入：追加本地没有的数据，不删除已有记录。
+ * - 领域 / 领域复盘：按 id，已存在则跳过
+ * - 今日复盘：按 dateKey，保留 updatedAt 较新的一条
+ * - settings：保留当前本地
+ */
+export function mergeState(importedRaw) {
+  const flashcards = importedRaw?.flashcards;
+  const incoming = normalizeState(importedRaw);
+  const current = loadState();
+  const stats = { domains: 0, dailyLogs: 0, domainReviews: 0 };
+
+  const domainIds = new Set(current.domains.map((d) => d.id));
+  for (const d of incoming.domains) {
+    if (domainIds.has(d.id)) continue;
+    current.domains.push({ ...d, order: current.domains.length });
+    domainIds.add(d.id);
+    stats.domains += 1;
+  }
+
+  const dailyByKey = new Map(current.dailyLogs.map((log) => [log.dateKey, log]));
+  for (const log of incoming.dailyLogs) {
+    const prev = dailyByKey.get(log.dateKey);
+    if (!prev) {
+      dailyByKey.set(log.dateKey, log);
+      stats.dailyLogs += 1;
+      continue;
+    }
+    const prevTime = new Date(prev.updatedAt || prev.createdAt).getTime();
+    const nextTime = new Date(log.updatedAt || log.createdAt).getTime();
+    if (nextTime > prevTime) dailyByKey.set(log.dateKey, log);
+  }
+  current.dailyLogs = [...dailyByKey.values()].sort((a, b) =>
+    b.dateKey.localeCompare(a.dateKey)
+  );
+
+  const reviewIds = new Set(current.domainReviews.map((r) => r.id));
+  for (const r of incoming.domainReviews) {
+    if (reviewIds.has(r.id) || !domainIds.has(r.domainId)) continue;
+    current.domainReviews.push(r);
+    reviewIds.add(r.id);
+    stats.domainReviews += 1;
+  }
+
+  if (flashcards?.length) {
+    const highlightIds = new Set(flashcards.map((f) => f.reviewId).filter(Boolean));
+    current.domainReviews = current.domainReviews.map((r) => {
+      if (!highlightIds.has(r.id) || r.highlighted) return r;
+      return {
+        ...r,
+        highlighted: true,
+        highlightedAt: r.highlightedAt || new Date().toISOString(),
+      };
+    });
+  }
+
+  saveState(current);
+  return { state: current, stats };
 }
 
 export function saveState(state) {
