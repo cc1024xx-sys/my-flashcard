@@ -3,11 +3,20 @@ import { bindDomainReviewForm, bindEditDomainReviewForm, setOnDomainReviewsChang
 import { bindDailyLogForm, bindEditDailyLogForm, loadTodayDailyLogIntoForm } from './dailyLog.js';
 import { renderAllHistory, bindHistoryUI } from './history.js';
 import { bindExtractForm, bindEditFlashcardForm, renderFlashcards } from './flashcards.js';
-import { loadState, saveState } from './storage.js';
-import { hydrateStateFromCloud } from './cloudSync.js';
 import { bindBackupUI } from './backup.js';
+import {
+  initAuth,
+  bindAuthUI,
+  showAuthGateIfNeeded,
+  hideAuthGate,
+  setOnLoginSuccess,
+  isSupabaseConfigured,
+} from './auth.js';
+import { getActiveUserId } from './session.js';
 
 const VIEWS = ['daily', 'domain-review', 'history', 'flashcards', 'domains'];
+
+let appBooted = false;
 
 function switchView(name) {
   VIEWS.forEach((v) => {
@@ -25,13 +34,19 @@ function switchView(name) {
   if (name === 'domains') renderDomains();
 }
 
-async function init() {
-  const hydrated = await hydrateStateFromCloud();
-  if (hydrated) {
-    // 走一遍 normalize 逻辑并写回，确保兼容旧字段结构。
-    const normalized = loadState();
-    saveState(normalized, { skipCloudSync: true });
+function refreshAllViews() {
+  loadTodayDailyLogIntoForm();
+  renderDomains();
+  renderAllHistory();
+  renderFlashcards();
+}
+
+function bootApp() {
+  if (appBooted) {
+    refreshAllViews();
+    return;
   }
+  appBooted = true;
 
   document.querySelectorAll('#main-nav [data-view]').forEach((btn) => {
     btn.addEventListener('click', () => switchView(btn.dataset.view));
@@ -50,18 +65,26 @@ async function init() {
   bindExtractForm();
   bindEditFlashcardForm();
   setOnDomainReviewsChanged(() => renderFlashcards());
-
   bindBackupUI(refreshAllViews);
 
   renderDomains();
   switchView('daily');
 }
 
-function refreshAllViews() {
-  loadTodayDailyLogIntoForm();
-  renderDomains();
-  renderAllHistory();
-  renderFlashcards();
+async function init() {
+  bindAuthUI();
+  setOnLoginSuccess(() => bootApp());
+
+  await initAuth();
+
+  if (isSupabaseConfigured()) {
+    if (showAuthGateIfNeeded()) return;
+    hideAuthGate();
+  }
+
+  if (isSupabaseConfigured() && !getActiveUserId()) return;
+
+  bootApp();
 }
 
 document.addEventListener('DOMContentLoaded', () => {

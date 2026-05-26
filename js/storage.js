@@ -1,6 +1,7 @@
 import { STORAGE_KEY, DEFAULT_DOMAINS } from './config.js';
 import { uid, getDateKey } from './utils.js';
 import { queueCloudSync } from './cloudSync.js';
+import { getActiveStorageKey } from './session.js';
 
 function emptyState() {
   return {
@@ -52,26 +53,29 @@ function migrateFromLegacyReviews(parsed) {
 }
 
 export function normalizeState(parsed) {
+  const clean = { ...parsed };
+  delete clean._meta;
+
   const migrated =
-    parsed.reviews?.length && !parsed.domainReviews?.length
-      ? migrateFromLegacyReviews(parsed)
+    clean.reviews?.length && !clean.domainReviews?.length
+      ? migrateFromLegacyReviews(clean)
       : {
-          domainReviews: parsed.domainReviews ?? [],
-          dailyLogs: parsed.dailyLogs ?? [],
+          domainReviews: clean.domainReviews ?? [],
+          dailyLogs: clean.dailyLogs ?? [],
         };
 
   return {
-    domains: parsed.domains ?? [],
+    domains: clean.domains ?? [],
     dailyLogs: migrated.dailyLogs,
     domainReviews: migrated.domainReviews,
-    flashcards: parsed.flashcards ?? [],
-      settings: { historyView: 'list', historyTab: 'day', ...parsed.settings },
+    flashcards: clean.flashcards ?? [],
+    settings: { historyView: 'list', historyTab: 'day', ...clean.settings },
   };
 }
 
 export function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(getActiveStorageKey());
     if (!raw) {
       const initial = emptyState();
       saveState(initial);
@@ -98,8 +102,8 @@ export function replaceState(parsed) {
 
 export function saveState(state, options = {}) {
   const { skipCloudSync = false } = options;
-  const { reviews, ...rest } = state;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(rest));
+  const { reviews, _meta, ...rest } = state;
+  localStorage.setItem(getActiveStorageKey(), JSON.stringify(rest));
   if (!skipCloudSync) queueCloudSync(rest);
 }
 
