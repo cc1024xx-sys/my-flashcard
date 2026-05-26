@@ -1,4 +1,4 @@
-import { STORAGE_KEY } from './config.js';
+import { STORAGE_KEY, APP_BASE_URL } from './config.js';
 import { getSupabaseClient, isSupabaseConfigured } from './supabaseClient.js';
 import { setActiveUserId, getActiveUserId } from './session.js';
 import { fetchCloudState, pushStateToCloud } from './cloudSync.js';
@@ -92,12 +92,62 @@ async function resolveDataAfterLogin(userId, { isFreshLogin = false } = {}) {
   loadState();
 }
 
+function getAuthRedirectUrl() {
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    const path = window.location.pathname.endsWith('/')
+      ? window.location.pathname
+      : `${window.location.pathname}/`;
+    return `${window.location.origin}${path}`;
+  }
+  return APP_BASE_URL;
+}
+
+function clearAuthParamsFromUrl() {
+  if (typeof window === 'undefined') return;
+  const clean = getAuthRedirectUrl();
+  window.history.replaceState({}, document.title, clean);
+}
+
+/** 处理邮件魔法链接 / OAuth 回跳 */
+export async function completeAuthFromUrl() {
+  const client = await getSupabaseClient();
+  if (!client) return null;
+
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  if (code) {
+    const { data, error } = await client.auth.exchangeCodeForSession(code);
+    if (error) {
+      console.warn('[auth] exchangeCodeForSession failed:', error.message);
+      showToast('登录链接无效或已过期，请重新发送验证码');
+      clearAuthParamsFromUrl();
+      return null;
+    }
+    clearAuthParamsFromUrl();
+    return data.session?.user ?? null;
+  }
+
+  const hash = window.location.hash || '';
+  if (hash.includes('access_token') || hash.includes('error=')) {
+    const { data, error } = await client.auth.getSession();
+    if (error) {
+      console.warn('[auth] getSession from hash failed:', error.message);
+      showToast('登录链接无效或已过期');
+    }
+    clearAuthParamsFromUrl();
+    return data.session?.user ?? null;
+  }
+
+  return null;
+}
+
 export async function initAuth() {
   if (!isSupabaseConfigured()) return null;
 
   const client = await getSupabaseClient();
+  const callbackUser = await completeAuthFromUrl();
   const { data } = await client.auth.getSession();
-  const user = data.session?.user;
+  const user = callbackUser ?? data.session?.user;
 
   if (user) {
     setActiveUserId(user.id);
@@ -107,6 +157,8 @@ export async function initAuth() {
     } else {
       await resolveDataAfterLogin(user.id, { isFreshLogin: true });
     }
+    hideAuthGate();
+    onLoginSuccess?.();
   }
 
   client.auth.onAuthStateChange(async (event, session) => {
@@ -133,9 +185,13 @@ export async function sendEmailOtp(email) {
   const client = await getSupabaseClient();
   if (!client) throw new Error('未配置 Supabase');
 
+  const redirectTo = getAuthRedirectUrl();
   const { error } = await client.auth.signInWithOtp({
     email,
-    options: { shouldCreateUser: true },
+    options: {
+      shouldCreateUser: true,
+      emailRedirectTo: redirectTo,
+    },
   });
   if (error) throw error;
 }
@@ -233,7 +289,7 @@ export function bindAuthUI() {
     sendBtn.disabled = true;
     try {
       await sendEmailOtp(email);
-      showToast('验证码已发送到邮箱');
+      showToast('邮件已发送：请查收验证码，或点击邮件中的登录链接');
     } catch (e) {
       showToast(e.message || '发送失败');
     } finally {

@@ -11,6 +11,9 @@ export const BACKUP_VERSION = 1;
 export const SUPABASE_URL = 'https://mbcowpiupleddzmvhudb.supabase.co';
 export const SUPABASE_ANON_KEY = 'sb_publishable_SAo3aFrVZ3AQlkiB8LyJUg_03T4Pqjf';
 
+/** GitHub Pages 站点根地址（魔法链接回调必须指向此 URL，末尾保留 /） */
+export const APP_BASE_URL = 'https://cc1024xx-sys.github.io/my-flashcard/';
+
 /** 7 色预设：清新自然、区分清晰 */
 export const DOMAIN_COLORS = [
   { hex: '#3B82F6', label: '晴空蓝' },
